@@ -1,0 +1,166 @@
+Sub CalculateStockDataAcrossWorksheets()
+    Dim wb As Workbook
+    Set wb = ThisWorkbook
+    
+    Dim ws As Worksheet
+    For Each ws In wb.Sheets
+        If ws.Name <> "Summary" Then ' Skip the summary sheet if it exists
+            CalculateStockData ws
+        End If
+    Next ws
+End Sub
+
+Sub CalculateStockData(ws As Worksheet)
+    Dim lastRow As Long
+    lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+    
+    Dim summaryRow As Long
+    summaryRow = 2 ' Start summary output from row 2
+    
+    Dim yearOpenPrice As Double
+    Dim yearClosePrice As Double
+    Dim yearlyChange As Double
+    Dim percentChange As Double
+    Dim totalVolume As Double
+    Dim ticker As String
+    Dim greatestIncreaseTicker As String
+    Dim greatestDecreaseTicker As String
+    Dim greatestVolumeTicker As String
+    Dim greatestIncrease As Double
+    Dim greatestDecrease As Double
+    Dim greatestVolume As Double
+    
+    greatestIncrease = 0
+    greatestDecrease = 0
+    greatestVolume = 0
+    
+        ' Set up headers for the summary table
+        ws.Cells(1, 9).Value = "Ticker"
+        ws.Cells(1, 10).Value = "Yearly Change"
+        ws.Cells(1, 11).Value = "Percent Change"
+        ws.Cells(1, 12).Value = "Total Stock Volume"
+    
+        ' Initialize values for the first ticker
+        ticker = ws.Cells(2, 1).Value
+        yearOpenPrice = ws.Cells(2, 3).Value
+    
+        For i = 2 To lastRow
+        If ws.Cells(i, 1).Value <> ticker Then
+            ' Calculate values for the previous ticker
+            yearClosePrice = ws.Cells(i - 1, 6).Value
+            yearlyChange = yearClosePrice - yearOpenPrice
+            If yearOpenPrice <> 0 Then
+                percentChange = (yearlyChange / yearOpenPrice) * 100
+            Else
+                percentChange = 0 ' Handle division by zero
+            End If
+            totalVolume = Application.WorksheetFunction.Sum(ws.Range(ws.Cells(summaryRow, 7), ws.Cells(i - 1, 7)))
+            
+            ' Update greatest increase, decrease, and volume
+            If percentChange > greatestIncrease Then
+                greatestIncrease = percentChange
+                greatestIncreaseTicker = ticker
+            End If
+            If percentChange < greatestDecrease Then
+                greatestDecrease = percentChange
+                greatestDecreaseTicker = ticker
+            End If
+            If totalVolume > greatestVolume Then
+                greatestVolume = totalVolume
+                greatestVolumeTicker = ticker
+            End If
+            
+            ' Output values to summary table
+            ws.Cells(summaryRow, 9).Value = ticker
+            ws.Cells(summaryRow, 10).Value = yearlyChange
+            ws.Cells(summaryRow, 11).Value = percentChange
+            ws.Cells(summaryRow, 12).Value = totalVolume
+            
+            ' Apply color coding based on yearly change
+            If yearlyChange < 0 Then
+                ws.Cells(summaryRow, 10).Interior.Color = RGB(255, 0, 0) ' Red
+            ElseIf yearlyChange > 0 Then
+                ws.Cells(summaryRow, 10).Interior.Color = RGB(0, 255, 0) ' Green
+            End If
+            
+            ' Move to the next summary row
+            summaryRow = summaryRow + 1
+            
+            ' Update values for the new ticker
+            ticker = ws.Cells(i, 1).Value
+            yearOpenPrice = ws.Cells(i, 3).Value
+        End If
+    Next i
+    
+    ' Calculate and output values for the last ticker
+    yearClosePrice = ws.Cells(lastRow, 6).Value
+    yearlyChange = yearClosePrice - yearOpenPrice
+    If yearOpenPrice <> 0 Then
+        percentChange = (yearlyChange / yearOpenPrice) * 100
+    Else
+        percentChange = 0 ' Handle division by zero
+    End If
+    totalVolume = Application.WorksheetFunction.Sum(ws.Range(ws.Cells(summaryRow, 7), ws.Cells(lastRow, 7)))
+    
+    ' Update greatest increase, decrease, and volume for the last ticker
+    If percentChange > greatestIncrease Then
+        greatestIncrease = percentChange
+        greatestIncreaseTicker = ticker
+    End If
+    If percentChange < greatestDecrease Then
+        greatestDecrease = percentChange
+        greatestDecreaseTicker = ticker
+    End If
+    If totalVolume > greatestVolume Then
+        greatestVolume = totalVolume
+        greatestVolumeTicker = ticker
+    End If
+    
+    ' Output values to summary table
+    ws.Cells(summaryRow, 9).Value = ticker
+    ws.Cells(summaryRow, 10).Value = yearlyChange
+    ws.Cells(summaryRow, 11).Value = percentChange
+    ws.Cells(summaryRow, 12).Value = totalVolume
+    
+    ' Apply color coding for the last ticker as well
+    If yearlyChange < 0 Then
+        ws.Cells(summaryRow, 10).Interior.Color = RGB(255, 0, 0) ' Red
+    ElseIf yearlyChange > 0 Then
+        ws.Cells(summaryRow, 10).Interior.Color = RGB(0, 255, 0) ' Green
+    End If
+    
+    ' Output the greatest increase, decrease, and volume with corresponding tickers to the right of the main summary table
+    ws.Cells(2, 15).Value = "Greatest % Increase"
+    ws.Cells(2, 16).Value = greatestIncrease
+    ws.Cells(2, 17).Value = greatestIncreaseTicker
+    ws.Cells(2, 15).Font.Bold = True
+    ws.Cells(2, 16).Font.Bold = True
+    ws.Cells(2, 17).Font.Bold = True
+    
+    ws.Cells(3, 15).Value = "Greatest % Decrease"
+    ws.Cells(3, 16).Value = greatestDecrease
+    ws.Cells(3, 17).Value = greatestDecreaseTicker
+    ws.Cells(3, 15).Font.Bold = True
+    ws.Cells(3, 16).Font.Bold = True
+    ws.Cells(3, 17).Font.Bold = True
+    
+    ws.Cells(4, 15).Value = "Greatest Total Volume"
+    ws.Cells(4, 16).Value = greatestVolume
+    ws.Cells(4, 17).Value = greatestVolumeTicker
+    ws.Cells(4, 15).Font.Bold = True
+    ws.Cells(4, 16).Font.Bold = True
+    ws.Cells(4, 17).Font.Bold = True
+    
+    ' Apply formatting to the row with the "Greatest Total Volume" ticker
+    For i = 2 To lastRow
+        If ws.Cells(i, 1).Value = greatestVolumeTicker Then
+            ws.Cells(i, 16).Interior.Color = RGB(0, 255, 0) ' Green
+            ws.Cells(i, 17).Interior.Color = RGB(0, 255, 0) ' Green
+            ws.Cells(i, 16).Font.Bold = True
+            ws.Cells(i, 17).Font.Bold = True
+        End If
+    Next i
+
+End Sub
+
+
